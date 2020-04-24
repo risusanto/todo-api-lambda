@@ -1,0 +1,158 @@
+service: todo
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  environment:
+    ${file(./env.yml):${opt:stage, self:provider.stage}}
+
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:GetItem
+        - dynamodb:Scan
+        - dynamodb:Query
+        - dynamodb:DeleteItem
+        - lambda:InvokeFunction
+      Resource:
+        - arn:aws:dynamodb:${self:provider.region}:#{AWS::AccountId}:table/*
+        - arn:aws:lambda:${self:provider.region}:#{AWS::AccountId}0:*
+
+plugins:
+  - serverless-pseudo-parameters
+
+functions:
+
+  authorizerFunc:
+    handler: auth.authorizerFunc
+
+  addTodo:
+    handler: handler.addTodo
+    package:
+      individually: true
+      include:
+        - todo/*
+    events:
+      - http:
+          path: /todo/create
+          method: post
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer.users}
+
+  fetchTodo:
+    handler: handler.fetchTodo
+    package:
+      individually: true
+      include:
+        - todo/*
+    events:
+      - http:
+          path: /todo
+          method: get
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer.users}
+
+  getTodo:
+    handler: handler.getTodo
+    package:
+      individually: true
+      include:
+        - todo/*
+    events:
+      - http:
+          path: /todo/get/{id}
+          method: get
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer.users}
+
+  updateTodo:
+    handler: handler.updateTodo
+    package:
+      individually: true
+      include:
+        - todo/*
+    events:
+      - http:
+          path: /todo/update
+          method: post
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer.users}
+
+  deleteTodo:
+    handler: handler.deleteTodo
+    package:
+      individually: true
+      include:
+        - todo/*
+    events:
+      - http:
+          path: /todo/delete/{id}
+          method: delete
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer.users}
+
+  getTodoByUser:
+    handler: handler.getTodoByUser
+    package:
+      individually: true
+      include:
+        - todo/*
+    events:
+      - http:
+          path: /todo/get/user/{userId}
+          method: get
+          cors: ${self:custom.cors}
+          authorizer: ${self:custom.authorizer.users}
+
+
+custom:
+  stage: ${self:provider.stage}
+  splitStacks:
+    perFunction: false
+    perType: true
+    perGroupFunction: false
+  authorizer:
+    users:
+      name: authorizerFunc
+      type: TOKEN
+      identitySource: method.request.header.Authorization
+      identityValidationExpression: Bearer (.*)
+  request:
+    parameters:
+      paths:
+        documentId: true
+  cors:
+    origin: '*'
+    headers:
+      - Content-Type
+      - X-Amz-Date
+      - Authorization
+      - X-Api-Key
+      - X-Amz-Security-Token
+      - X-Amz-User-Agent
+      - Startlower
+      - Text
+      - Access-Control-Allow-Headers
+      - Access-Control-Allow-Origin
+      - Cache-Control
+      - Accept
+      - Accept-CH
+      - Accept-CH-Lifetime
+      - Accept-Charset
+      - Accept-Encoding
+      - Accept-Language
+      - Accept-Patch
+      - Accept-Ranges
+      - pragma
+      - referer
+      - sec-fetch-mode
+      - sec-fetch-site
+      - user-agent
+      - Access-Control-Request-Headers
+      - Access-Control-Request-Method
+      - x-applocaleid
+    allowCredentials: false
