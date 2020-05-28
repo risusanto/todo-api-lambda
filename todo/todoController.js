@@ -90,6 +90,14 @@ class todoController extends Controller{
 
         return callback(null, this.response.createResponse(200,getResult));
     }
+
+    async getAllTodoByDate(event, context, callback) {
+        let data = {
+            "date": new Date().toISOString(),
+            "date": "hello"
+        };
+        return this.response.createResponse(400, data);
+    }
 }
 
 const todo = new todoController();
